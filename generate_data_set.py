@@ -1,12 +1,13 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from TestBridgeTemperatureDT.query_weather_data import query_weather_data
+from TestBridgeTemperatureDT.dummy_model import DummyModel
 from astral.sun import zenith, azimuth, elevation
 from astral import LocationInfo
 import matplotlib.pyplot as plt
 
 
-def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: str, output_path: str, show: bool = False):
+def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: str, output_path: str, show: bool = False, true_c1: float = 0.5, true_c2: float = 0.1):
 
     weather_data = query_weather_data(api_key_path, city, start_date, end_date)
 
@@ -47,6 +48,10 @@ def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: s
             plt.ylabel(col)
             plt.show()
 
+    # Create a dummy model
+    model = DummyModel(true_c1, true_c2, 10, 10)
+    model.calculate_grid(temperatures, wind_speeds, sun_zeniths, sun_azimuths, sun_elevations)
+    model.output_to_xdmf('data/dummy_model_output')
     # return data
 
 
@@ -56,6 +61,6 @@ if __name__ == '__main__':
     city = 'Worms'
     start_date = datetime.now().strftime('%Y-%m-%d')
     end_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
-    df = generate_data_set(api_key_path, city, start_date, end_date, output_path=output_path, show=False)
-    df.to_json('example_full.json')
+    generate_data_set(api_key_path, city, start_date, end_date, output_path=output_path, show=False)
+    # df.to_json('example_full.json')
     
