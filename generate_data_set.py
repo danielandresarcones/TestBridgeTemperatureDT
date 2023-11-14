@@ -7,7 +7,7 @@ from astral import LocationInfo
 import matplotlib.pyplot as plt
 
 
-def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: str, output_path: str, show: bool = False, true_c1: float = 0.5, true_c2: float = 0.1):
+def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: str, output_path: str, show: bool = False, true_c1: float = 1.0, true_c2: float = 0.01):
 
     weather_data = query_weather_data(api_key_path, city, start_date, end_date)
 
@@ -52,6 +52,7 @@ def generate_data_set(api_key_path: str, city: str, start_date: str, end_date: s
     model = DummyModel(true_c1, true_c2, 10, 10)
     model.calculate_grid(temperatures, wind_speeds, sun_zeniths, sun_azimuths, sun_elevations)
     model.output_to_xdmf('data/dummy_model_output')
+    model.plot_with_slider()
     # return data
 
 

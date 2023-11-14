@@ -1,6 +1,8 @@
-
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
+from scipy.interpolate import interp2d
+from matplotlib.widgets import Slider
 
 class DummyModel:
     """
@@ -39,7 +41,39 @@ class DummyModel:
         self.grid = np.zeros((x_size, y_size))
 
     def calculate_temperature(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
-        return self.temp_const * temp + self.wind_const * wind_speed
+        return self.temp_const * temp - self.wind_const * wind_speed
+
+
+    def calculate_grid(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
+        """
+        Calculates the temperature grid based on the given parameters.
+
+        Parameters:
+        -----------
+        temp : numpy.ndarray
+            The current temperature vector with shape (num_timesteps,).
+        wind_speed : float
+            The current wind speed.
+        sun_zenith : float
+            The sun zenith angle in degrees.
+        sun_azimuth : float
+            The sun azimuth angle in degrees.
+        sun_elevation : float
+            The sun elevation angle in degrees.
+        """
+        num_timesteps = len(temp)
+        self.t_size = num_timesteps
+        # Create 3D array to store temperature values for each point at each timestep
+        self.grid = np.zeros((self.x_size, self.y_size, num_timesteps))
+
+        # Calculate temperature at each point for current timestep
+        for t in range(num_timesteps):
+            temperature = self.calculate_temperature(temp[t], wind_speed[t], sun_zenith[t], sun_azimuth[t], sun_elevation[t])
+            # Interpolate temperature values to the rest of the grid
+            x = np.arange(self.x_size)
+            y = np.arange(self.y_size)
+            f = interp2d([0, self.x_size-1], [0, self.y_size-1], [[temperature, 273], [273, 273]])
+            self.grid[:, :, t] = f(x, y)
 
     def get_temperature(self, x, y):
         """
@@ -59,21 +93,6 @@ class DummyModel:
         """
         return self.grid[x, y]
 
-    def calculate_grid(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
-        """
-        Calculates the temperature grid based on the given parameters.
-
-        Parameters:
-        -----------
-        temp : float
-            The current temperature.
-        wind_speed : float
-            The current wind speed.
-        """
-        for i in range(self.x_size):
-            for j in range(self.y_size):
-                self.grid[i, j] = self.calculate_temperature(temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation)
-
     def output_to_xdmf(self, filename):
         """
         Outputs the temperature grid to an XDMF file.
@@ -86,12 +105,25 @@ class DummyModel:
         x = np.arange(self.x_size)
         y = np.arange(self.y_size)
         coords = {'x': x, 'y': y}
-        data_vars = {'temperature': (['x', 'y'], self.grid)}
+        data_vars = {'temperature': (['x', 'y', 'time'], self.grid)}
         ds = xr.Dataset(data_vars, coords)
         ds.to_netcdf(filename + '.nc')
-        with open(filename + '.xdmf', 'w') as f:
+        with open(filename + '.xdmf', 'w', encoding='utf-8') as f:
             f.write('<?xml version="1.0" ?>\n')
-            f.write('<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>\n')
+            f.write(f'<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>\n')
+            f.write('  <Domain>\n')
+            f.write('    <Grid Name="grid" GridType="Uniform">\n')
+            f.write('      <Topology TopologyType="2DRectMesh" NumberOfElements="%d %d"/>\n' % (self.x_size, self.y_size))
+            f.write('      <Geometry GeometryType="ORIGIN_DXDY">\n')
+            f.write(f'        <DataItem Name="Origin" Dimensions="2" NumberType="Float" Precision="4" Format="XML">0.0 0.0</DataItem>\n')
+            f.write(f'        <DataItem Name="Spacing" Dimensions="2" NumberType="Float" Precision="4" Format="XML">1.0 1.0</DataItem>\n')
+            f.write('      </Geometry>\n')
+            f.write('      <Attribute Name="temperature" AttributeType="Scalar" Center="Node">\n')
+            f.write(f'        <DataItem Dimensions="%d %d %d" NumberType="Float" Precision="4" Format="HDF">%s:/%s</DataItem>\n' % (self.x_size, self.y_size, self.grid.shape[2], filename + '.nc', 'temperature'))
+            f.write('      </Attribute>\n')
+            f.write('    </Grid>\n')
+            f.write('  </Domain>\n')
+            f.write('</Xdmf>\n')
             f.write('<Xdmf Version="2.0">\n')
             f.write('  <Domain>\n')
             f.write('    <Grid Name="grid" GridType="Uniform">\n')
@@ -106,3 +138,28 @@ class DummyModel:
             f.write('    </Grid>\n')
             f.write('  </Domain>\n')
             f.write('</Xdmf>\n')
+
+    def plot_with_slider(self):
+        fig, ax = plt.subplots()
+        plt.subplots_adjust(bottom=0.25)  # Adjust the bottom to make room for the slider
+
+        im = ax.imshow(self.grid[:, :, 0], cmap='coolwarm', vmin=np.min(self.grid), vmax=np.max(self.grid))
+
+        ax_slider = plt.axes([0.1, 0.01, 0.65, 0.03], facecolor='lightgoldenrodyellow')  # Define the slider's position
+
+        slider = Slider(ax_slider, 'Time', 0, self.t_size - 1, valinit=0)
+        colorbar = fig.colorbar(im)
+        vmin = 273.0
+        vmax = 280.0
+        im.set_clim(vmin, vmax)  # Set the colorbar limits
+
+        def update(val):
+            i = int(slider.val)
+            im.set_data(self.grid[:, :, i])
+            ax.set_title(f'Time: {i}')
+            fig.canvas.draw_idle()
+
+        slider.on_changed(update)
+
+        plt.show()
+
