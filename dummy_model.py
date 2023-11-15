@@ -33,12 +33,18 @@ class DummyModel:
         Outputs the temperature grid to an XDMF file.
     """
 
-    def __init__(self, temp_const, wind_const, x_size, y_size):
+    def __init__(self, temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant, x_size, y_size):
+        
+        # Tunable parameters
         self.temp_const = temp_const
         self.wind_const = wind_const
+        self.zenith_constant = zenith_constant
+        self.azimuth_constant = azimuth_constant
+        self.elevation_constant = elevation_constant
+
+        # Grid parameters
         self.x_size = x_size
         self.y_size = y_size
-        self.grid = np.zeros((x_size, y_size))
 
     def calculate_temperature(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
         return self.temp_const * temp - self.wind_const * wind_speed
@@ -92,52 +98,6 @@ class DummyModel:
             The temperature value at the given coordinates.
         """
         return self.grid[x, y]
-
-    def output_to_xdmf(self, filename):
-        """
-        Outputs the temperature grid to an XDMF file.
-
-        Parameters:
-        -----------
-        filename : str
-            The name of the output file.
-        """
-        x = np.arange(self.x_size)
-        y = np.arange(self.y_size)
-        coords = {'x': x, 'y': y}
-        data_vars = {'temperature': (['x', 'y', 'time'], self.grid)}
-        ds = xr.Dataset(data_vars, coords)
-        ds.to_netcdf(filename + '.nc')
-        with open(filename + '.xdmf', 'w', encoding='utf-8') as f:
-            f.write('<?xml version="1.0" ?>\n')
-            f.write(f'<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>\n')
-            f.write('  <Domain>\n')
-            f.write('    <Grid Name="grid" GridType="Uniform">\n')
-            f.write('      <Topology TopologyType="2DRectMesh" NumberOfElements="%d %d"/>\n' % (self.x_size, self.y_size))
-            f.write('      <Geometry GeometryType="ORIGIN_DXDY">\n')
-            f.write(f'        <DataItem Name="Origin" Dimensions="2" NumberType="Float" Precision="4" Format="XML">0.0 0.0</DataItem>\n')
-            f.write(f'        <DataItem Name="Spacing" Dimensions="2" NumberType="Float" Precision="4" Format="XML">1.0 1.0</DataItem>\n')
-            f.write('      </Geometry>\n')
-            f.write('      <Attribute Name="temperature" AttributeType="Scalar" Center="Node">\n')
-            f.write(f'        <DataItem Dimensions="%d %d %d" NumberType="Float" Precision="4" Format="HDF">%s:/%s</DataItem>\n' % (self.x_size, self.y_size, self.grid.shape[2], filename + '.nc', 'temperature'))
-            f.write('      </Attribute>\n')
-            f.write('    </Grid>\n')
-            f.write('  </Domain>\n')
-            f.write('</Xdmf>\n')
-            f.write('<Xdmf Version="2.0">\n')
-            f.write('  <Domain>\n')
-            f.write('    <Grid Name="grid" GridType="Uniform">\n')
-            f.write('      <Topology TopologyType="2DRectMesh" NumberOfElements="%d %d"/>\n' % (self.x_size, self.y_size))
-            f.write('      <Geometry GeometryType="ORIGIN_DXDY">\n')
-            f.write('        <DataItem Name="Origin" Dimensions="2" NumberType="Float" Precision="4" Format="XML">0.0 0.0</DataItem>\n')
-            f.write('        <DataItem Name="Spacing" Dimensions="2" NumberType="Float" Precision="4" Format="XML">1.0 1.0</DataItem>\n')
-            f.write('      </Geometry>\n')
-            f.write('      <Attribute Name="temperature" AttributeType="Scalar" Center="Node">\n')
-            f.write('        <DataItem Dimensions="%d %d" NumberType="Float" Precision="4" Format="HDF">%s:/%s</DataItem>\n' % (self.x_size, self.y_size, filename + '.nc', 'temperature'))
-            f.write('      </Attribute>\n')
-            f.write('    </Grid>\n')
-            f.write('  </Domain>\n')
-            f.write('</Xdmf>\n')
 
     def plot_with_slider(self):
         fig, ax = plt.subplots()
