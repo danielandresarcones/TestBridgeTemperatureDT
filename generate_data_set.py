@@ -83,5 +83,5 @@ if __name__ == "__main__":
     city = "Worms"
     start_date = datetime.now().strftime("%Y-%m-%d")
     end_date = (datetime.now() - timedelta(days=5)).strftime("%Y-%m-%d")
-    generate_data_set(api_key_path, city, start_date, end_date, output_path=output_path, show=False)
+    generate_data_set(api_key_path, city, start_date, end_date, output_path=output_path, show=True)
     # df.to_json('example_full.json')
