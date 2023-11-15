@@ -89,6 +89,13 @@ class DummyModel:
         self.elevation_constant = elevation_constant
         self.calculate_grid(self.temp, self.wind_speed, self.sun_zenith, self.sun_azimuth, self.sun_elevation)
         return self.grid
+    
+    def update_parameters(self, temp_const=0.0, wind_const=0.0, zenith_constant=0.0, azimuth_constant=0.0, elevation_constant=0.0):
+        self.temp_const = temp_const
+        self.wind_const = wind_const
+        self.zenith_constant = zenith_constant
+        self.azimuth_constant = azimuth_constant
+        self.elevation_constant = elevation_constant
 
     def store_inputs(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
         self.temp = temp
