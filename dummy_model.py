@@ -80,6 +80,22 @@ class DummyModel:
             y = np.arange(self.y_size)
             f = interp2d([0, self.x_size-1], [0, self.y_size-1], [[temperature, 273], [273, 273]])
             self.grid[:, :, t] = f(x, y)
+    
+    def update_grid(self, temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant):
+        self.temp_const = temp_const
+        self.wind_const = wind_const
+        self.zenith_constant = zenith_constant
+        self.azimuth_constant = azimuth_constant
+        self.elevation_constant = elevation_constant
+        self.calculate_grid(self.temp, self.wind_speed, self.sun_zenith, self.sun_azimuth, self.sun_elevation)
+        return self.grid
+
+    def store_inputs(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
+        self.temp = temp
+        self.wind_speed = wind_speed
+        self.sun_zenith = sun_zenith
+        self.sun_azimuth = sun_azimuth
+        self.sun_elevation = sun_elevation
 
     def get_temperature(self, x, y):
         """
@@ -123,3 +139,27 @@ class DummyModel:
 
         plt.show()
 
+    @staticmethod
+    def wrapper_salib(X, func=update_grid):
+        """
+        Wrapper function for SALib analysis. Evaluates the given function for each row in the input array X.
+
+        Parameters:
+        -----------
+        X : numpy.ndarray
+            Input array of shape (N, D) where N is the number of samples and D is the number of parameters.
+        func : callable
+            Function to be evaluated for each row in X. The function should take D arguments.
+
+        Returns:
+        --------
+        numpy.ndarray
+            Array of shape (N,) containing the results of evaluating func for each row in X.
+        """
+        N, D = X.shape
+        results = np.empty(N)
+        for i in range(N):
+            temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant = X[i, :]
+            results[i] = func(temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant)
+
+        return results
