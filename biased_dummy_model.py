@@ -2,8 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp2d
 from matplotlib.widgets import Slider
+from TestBridgeTemperatureDT.dummy_model import DummyModel
 
-class DummyModel:
+class BiasedDummyModel(DummyModel):
     """
     A dummy model for estimating bridge temperature.
 
@@ -32,25 +33,13 @@ class DummyModel:
         Outputs the temperature grid to an XDMF file.
     """
 
-    def __init__(self, temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant, x_size, y_size):
-        
-        # Tunable parameters
-        self.temp_const = temp_const
-        self.wind_const = wind_const
-        self.zenith_constant = zenith_constant
-        self.azimuth_constant = azimuth_constant
-        self.elevation_constant = elevation_constant
-
-        # Grid parameters
-        self.x_size = x_size
-        self.y_size = y_size
-
-    def calculate_temperature(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
-        return self.temp_const * temp - self.wind_const * wind_speed
+    def calculate_temperature(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation, x, y):
+        return (self.temp_const * temp - self.wind_const * wind_speed - 273)*np.dot(np.sqrt((1-x)).reshape(-1,1),(1-y).reshape(1,-1)) + 273.0
 
 
     def calculate_grid(self, temp, wind_speed, sun_zenith, sun_azimuth, sun_elevation):
         """
+
         Calculates the temperature grid based on the given parameters.
 
         Parameters:
@@ -69,16 +58,14 @@ class DummyModel:
         num_timesteps = len(temp)
         self.t_size = num_timesteps
         # Create 3D array to store temperature values for each point at each timestep
-        self.grid = np.zeros((self.x_size, self.y_size, num_timesteps))
+        self.grid = np.zeros((self.x_size+1, self.y_size+1, num_timesteps))
 
         # Calculate temperature at each point for current timestep
         for t in range(num_timesteps):
-            temperature = self.calculate_temperature(temp[t], wind_speed[t], sun_zenith[t], sun_azimuth[t], sun_elevation[t])
             # Interpolate temperature values to the rest of the grid
-            x = np.arange(self.x_size)
-            y = np.arange(self.y_size)
-            f = interp2d([0, self.x_size-1], [0, self.y_size-1], [[temperature, 273], [273, 273]])
-            self.grid[:, :, t] = f(x, y)
+            x = np.arange(self.x_size+1)
+            y = np.arange(self.y_size+1)
+            self.grid[:, :, t] = self.calculate_temperature(temp[t], wind_speed[t], sun_zenith[t], sun_azimuth[t], sun_elevation[t],x/self.x_size,y/self.y_size)
     
     def update_grid(self, temp_const, wind_const, zenith_constant, azimuth_constant, elevation_constant):
         self.temp_const = temp_const
@@ -121,7 +108,7 @@ class DummyModel:
         """
         return self.grid[x, y]
 
-    def plot_with_slider(self, vmin=273.0, vmax=280.0):
+    def plot_with_slider(self):
         fig, ax = plt.subplots()
         plt.subplots_adjust(bottom=0.25)  # Adjust the bottom to make room for the slider
 
@@ -131,7 +118,8 @@ class DummyModel:
 
         slider = Slider(ax_slider, 'Time', 0, self.t_size - 1, valinit=0)
         colorbar = fig.colorbar(im)
-
+        vmin = 273.0
+        vmax = 280.0
         im.set_clim(vmin, vmax)  # Set the colorbar limits
 
         def update(val):

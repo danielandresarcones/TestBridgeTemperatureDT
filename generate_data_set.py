@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime, timedelta
 from TestBridgeTemperatureDT.query_weather_data import query_weather_data
+from TestBridgeTemperatureDT.biased_dummy_model import BiasedDummyModel
 from TestBridgeTemperatureDT.dummy_model import DummyModel
 from astral.sun import zenith, azimuth, elevation
 from astral import LocationInfo
@@ -66,13 +67,25 @@ def generate_data_set(
             plt.show()
 
     # Create a dummy model
-    model = DummyModel(true_c1, true_c2, true_c3, true_c4, true_c5, 10, 10)
+    model = BiasedDummyModel(true_c1, true_c2, true_c3, true_c4, true_c5, 10, 10)
     model.calculate_grid(temperatures, wind_speeds, sun_zeniths, sun_azimuths, sun_elevations)
+    computational_model = DummyModel(true_c1, true_c2, true_c3, true_c4, true_c5, 11, 11)
+    computational_model.calculate_grid(temperatures, wind_speeds, sun_zeniths, sun_azimuths, sun_elevations)
     output_name, output_format = output_path.split('.')
     output_data_path = output_name + '_output.' + output_format
     with h5py.File(output_data_path, "w") as f:
-        f.create_dataset("Model output", data=model.grid)
+        f.create_dataset("Model output", data=model.grid[5,0,:])
     model.plot_with_slider()
+    error_model = DummyModel(true_c1, true_c2, true_c3, true_c4, true_c5, 11, 11)
+    error_model.grid = computational_model.grid - model.grid
+    error_model.t_size = computational_model.t_size
+    # error_model.plot_with_slider(vmin=-1.0, vmax=1.0)
+
+    plt.figure()
+    plt.plot(model.grid[5,0,:],'.', label='Model')
+    plt.plot(computational_model.grid[5,0,:],'.', label='Computational Model')
+    plt.show()
+
 
     # return data
 

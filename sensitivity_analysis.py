@@ -26,12 +26,12 @@ def sensitivity_analysis(num_samples, num_param, input_names, bounds, weather_fi
     # Initialize model
     model = DummyModel(0, 0, 0, 0, 0, 10, 10)
     model.store_inputs(temperatures, wind_speeds, sun_zeniths, sun_azimuths, sun_elevations)
-    grid = (model.update_grid(param_values[0][0], param_values[0][1], param_values[0][2], param_values[0][3], param_values[0][4])).flatten()
+    grid = (model.update_grid(param_values[0][0], param_values[0][1], param_values[0][2], param_values[0][3], param_values[0][4]))[0,0,:].flatten()
 
     # Run model
     Y = np.zeros([param_values.shape[0], grid.shape[0]])
     for i, X in enumerate(param_values):
-        Y[i] = (model.update_grid(X[0], X[1], X[2], X[3], X[4])).flatten()
+        Y[i] = (model.update_grid(X[0], X[1], X[2], X[3], X[4]))[0,0,:].flatten()
         
 
     # Perform analysis
@@ -65,7 +65,7 @@ def sensitivity_analysis(num_samples, num_param, input_names, bounds, weather_fi
     for i, X in enumerate(new_param_values):
         full_X = np.zeros(len(input_names))
         full_X[sorted_indices] = X
-        new_Y[i] = (model.update_grid(full_X[0], full_X[1], full_X[2], full_X[3], full_X[4])).flatten()
+        new_Y[i] = (model.update_grid(full_X[0], full_X[1], full_X[2], full_X[3], full_X[4]))[0,0,:].flatten()
 
     # Perform analysis with new samples
     new_Si = sobol.analyze(new_problem, new_Y.T.flatten(), calc_second_order=True)
